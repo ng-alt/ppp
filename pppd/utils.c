@@ -653,11 +653,13 @@ logit(level, fmt, args)
     char *fmt;
     va_list args;
 {
+#ifdef SUPPORT_PPP_DEBUG
     int n;
     char buf[1024];
 
     n = vslprintf(buf, sizeof(buf), fmt, args);
     log_write(level, buf);
+#endif
 }
 
 static void
@@ -665,6 +667,7 @@ log_write(level, buf)
     int level;
     char *buf;
 {
+#ifdef SUPPORT_PPP_DEBUG
     syslog(level, "%s", buf);
     if (log_to_fd >= 0 && (level != LOG_DEBUG || debug)) {
 	int n = strlen(buf);
@@ -675,6 +678,7 @@ log_write(level, buf)
 	    || write(log_to_fd, "\n", 1) != 1)
 	    log_to_fd = -1;
     }
+#endif
 }
 
 /*
@@ -683,6 +687,7 @@ log_write(level, buf)
 void
 fatal __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -697,6 +702,7 @@ fatal __V((char *fmt, ...))
     va_end(pvar);
 
     die(1);			/* as promised */
+#endif
 }
 
 /*
@@ -705,6 +711,7 @@ fatal __V((char *fmt, ...))
 void
 error __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -718,6 +725,7 @@ error __V((char *fmt, ...))
     logit(LOG_ERR, fmt, pvar);
     va_end(pvar);
     ++error_count;
+#endif
 }
 
 /*
@@ -726,6 +734,7 @@ error __V((char *fmt, ...))
 void
 warn __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -738,6 +747,7 @@ warn __V((char *fmt, ...))
 
     logit(LOG_WARNING, fmt, pvar);
     va_end(pvar);
+#endif
 }
 
 /*
@@ -746,6 +756,7 @@ warn __V((char *fmt, ...))
 void
 notice __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -758,6 +769,7 @@ notice __V((char *fmt, ...))
 
     logit(LOG_NOTICE, fmt, pvar);
     va_end(pvar);
+#endif
 }
 
 /*
@@ -766,6 +778,7 @@ notice __V((char *fmt, ...))
 void
 info __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -778,6 +791,7 @@ info __V((char *fmt, ...))
 
     logit(LOG_INFO, fmt, pvar);
     va_end(pvar);
+#endif
 }
 
 /*
@@ -786,6 +800,7 @@ info __V((char *fmt, ...))
 void
 dbglog __V((char *fmt, ...))
 {
+#ifdef SUPPORT_PPP_DEBUG
     va_list pvar;
 
 #if defined(__STDC__)
@@ -798,6 +813,7 @@ dbglog __V((char *fmt, ...))
 
     logit(LOG_DEBUG, fmt, pvar);
     va_end(pvar);
+#endif
 }
 
 /*
@@ -807,6 +823,7 @@ dbglog __V((char *fmt, ...))
 void
 dump_packet(const char *tag, unsigned char *p, int len)
 {
+#ifdef SUPPORT_PPP_DEBUG
     int proto;
 
     if (!debug)
@@ -828,6 +845,7 @@ dump_packet(const char *tag, unsigned char *p, int len)
     }
 
     dbglog("%s %P", tag, p, len);
+#endif
 }
 
 /*

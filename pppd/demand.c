@@ -156,6 +156,36 @@ demand_discard()
     fcs = PPP_INITFCS;
 }
 
+/*  added start Winster Chan 12/23/2005 */
+/*
+ * demand_discard2 - set each network protocol to discard packets
+ * without any error.
+ */
+void
+demand_discard2()
+{
+    struct packet *pkt, *nextpkt;
+    int i;
+    struct protent *protp;
+
+    for (i = 0; (protp = protocols[i]) != NULL; ++i)
+    if (protp->enabled_flag && protp->demand_conf != NULL)
+        sifnpmode(0, protp->protocol & ~0x8000, NPMODE_PASS);
+    get_loop_output();
+
+    /* discard all saved packets */
+    for (pkt = pend_q; pkt != NULL; pkt = nextpkt) {
+        nextpkt = pkt->next;
+        free(pkt);
+    }
+    pend_q = NULL;
+    framelen = 0;
+    flush_flag = 0;
+    escape_flag = 0;
+    fcs = PPP_INITFCS;
+}
+/*  added end Winster Chan 12/23/2005 */
+
 /*
  * demand_unblock - set each enabled network protocol to pass packets.
  */
@@ -279,6 +309,12 @@ loop_frame(frame, len)
 	return 0;		/* shouldn't get any of these anyway */
     if (!active_packet(frame, len))
 	return 0;
+
+    /*  wklin added start, 01/24/2007 */
+    if (PPP_PROTOCOL(frame) == 0x0021 && 
+            frame[13] == 0x01 && frame[20] == 0xFF) 
+        return 1; /* if this is a IP+ICMP+BCAST(0xff) packet */
+    /*  wklin added end, 01/24/2007 */
 
     pkt = (struct packet *) malloc(sizeof(struct packet) + len);
     if (pkt != NULL) {

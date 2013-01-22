@@ -1964,6 +1964,7 @@ ipcp_script_done(arg)
 	}
 	break;
     }
+    script_unsetenv("IDLE_TIMEOUT");    /*  added pling 02/13/2007 */
 }
 
 

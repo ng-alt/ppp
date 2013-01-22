@@ -117,6 +117,12 @@
 #endif
 #include "pathnames.h"
 
+/*  added start, zacker, 04/20/2011 */
+char *path_upapfile = _PATH_UPAPFILE;
+char *path_chapfile = _PATH_CHAPFILE;
+char *path_srpfile = _PATH_SRPFILE;
+/*  added end, zacker, 04/20/2011 */
+
 static const char rcsid[] = RCSID;
 
 /* Bits in scan_authfile return value */
@@ -629,9 +635,12 @@ link_terminated(unit)
      * can happen that another pppd gets the same unit and then
      * we delete its pid file.
      */
+     /*  Bob Guo removed start for multiple pppoe, removed for normal pppoe in the future. 10/26/2007 */
+#ifndef MULTIPLE_PPPOE
     if (!doing_multilink && !demand)
 	remove_pidfiles();
-
+#endif
+    /*  Bob Guo removed end 10/26/2007 */
     /*
      * If we may want to bring the link up again, transfer
      * the ppp unit back to the loopback.  Set the
@@ -1187,6 +1196,7 @@ check_idle(arg)
     if (tlim <= 0) {
 	/* link is idle: shut it down. */
 	notice("Terminating connection due to lack of activity.");
+    script_setenv("IDLE_TIMEOUT", "timeout", 0);    /*  added pling 02/13/2007 */
 	status = EXIT_IDLE_TIMEOUT;
 	lcp_close(0, "Link inactive");
 	need_holdoff = 0;
@@ -1401,7 +1411,8 @@ check_passwd(unit, auser, userlen, apasswd, passwdlen, msg)
      * Open the file of pap secrets and scan for a suitable secret
      * for authenticating this user.
      */
-    filename = _PATH_UPAPFILE;
+    //filename = _PATH_UPAPFILE;
+    filename = path_upapfile; /*  modified, zacker, 04/20/2011 */
     addrs = opts = NULL;
     ret = UPAP_AUTHNAK;
     f = fopen(filename, "r");
@@ -1719,7 +1730,8 @@ null_login(unit)
      * Open the file of pap secrets and scan for a suitable secret.
      */
     if (ret <= 0) {
-	filename = _PATH_UPAPFILE;
+	//filename = _PATH_UPAPFILE;
+	filename = path_upapfile; /*  modified, zacker, 04/20/2011 */
 	addrs = NULL;
 	f = fopen(filename, "r");
 	if (f == NULL)
@@ -1767,7 +1779,8 @@ get_pap_passwd(passwd)
 	    return ret;
     }
 
-    filename = _PATH_UPAPFILE;
+    //filename = _PATH_UPAPFILE;
+    filename = path_upapfile; /*  modified, zacker, 04/20/2011 */
     f = fopen(filename, "r");
     if (f == NULL)
 	return 0;
@@ -1805,7 +1818,8 @@ have_pap_secret(lacks_ipp)
 	    return ret;
     }
 
-    filename = _PATH_UPAPFILE;
+    //filename = _PATH_UPAPFILE;
+    filename = path_upapfile; /*  modified, zacker, 04/20/2011 */
     f = fopen(filename, "r");
     if (f == NULL)
 	return 0;
@@ -1850,7 +1864,8 @@ have_chap_secret(client, server, need_ip, lacks_ipp)
 	}
     }
 
-    filename = _PATH_CHAPFILE;
+    //filename = _PATH_CHAPFILE;
+    filename = path_chapfile; /*  modified, zacker, 04/20/2011 */
     f = fopen(filename, "r");
     if (f == NULL)
 	return 0;
@@ -1892,7 +1907,8 @@ have_srp_secret(client, server, need_ip, lacks_ipp)
     char *filename;
     struct wordlist *addrs;
 
-    filename = _PATH_SRPFILE;
+    //filename = _PATH_SRPFILE;
+    filename = path_srpfile; /*  modified, zacker, 04/20/2011 */
     f = fopen(filename, "r");
     if (f == NULL)
 	return 0;
@@ -1945,7 +1961,8 @@ get_secret(unit, client, server, secret, secret_len, am_server)
 	    return 0;
 	}
     } else {
-	filename = _PATH_CHAPFILE;
+	//filename = _PATH_CHAPFILE;
+	filename = path_chapfile; /*  modified, zacker, 04/20/2011 */
 	addrs = NULL;
 	secbuf[0] = 0;
 
@@ -2003,7 +2020,8 @@ get_srp_secret(unit, client, server, secret, am_server)
     if (!am_server && passwd[0] != '\0') {
 	strlcpy(secret, passwd, MAXWORDLEN);
     } else {
-	filename = _PATH_SRPFILE;
+	//filename = _PATH_SRPFILE;
+	filename = path_srpfile; /*  modified, zacker, 04/20/2011 */
 	addrs = NULL;
 
 	fp = fopen(filename, "r");

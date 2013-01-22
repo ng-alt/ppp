@@ -192,6 +192,11 @@ lcp_options lcp_wantoptions[NUM_PPP];	/* Options that we want to request */
 lcp_options lcp_gotoptions[NUM_PPP];	/* Options that peer ack'd */
 lcp_options lcp_allowoptions[NUM_PPP];	/* Options we allow peer to request */
 lcp_options lcp_hisoptions[NUM_PPP];	/* Options that we ack'd */
+#ifdef MULTIPLE_PPPOE
+unsigned long lcp_ppp_received_pktnr[2]; 
+#else
+unsigned long lcp_ppp_received_pktnr[NUM_PPP]; 
+#endif
 
 static int lcp_echos_pending = 0;	/* Number of outstanding echo msgs */
 static int lcp_echo_number   = 0;	/* ID number of next echo frame */
@@ -2302,6 +2307,38 @@ lcp_received_echo_reply (f, id, inp, len)
     lcp_echos_pending = 0;
 }
 
+/*  wklin added start, 08/28/2007 */
+/* For "no lcp reply" link down fix */
+static unsigned long get_ppp_pktnr(int ppp_unit)
+{
+    FILE *fp;
+    int unit;
+    unsigned long rxb, rxnr, unknown;
+    char buf[512];
+    char ifname[64];
+    int matched = 0;
+
+    fp = fopen("/proc/net/dev", "r");
+    if (!fp)
+	return 0;
+    else {
+	sprintf(ifname, "ppp%d", ppp_unit);
+	while (NULL != fgets(buf, sizeof(buf), fp)) {
+	    if (strstr(buf, ifname)) {
+		matched = sscanf(buf, " ppp%d: %lu %lu %lu", &unit, &rxb, &rxnr, &unknown);
+		fclose(fp);
+		if (matched >= 3)
+		    return rxnr;
+		else
+		    return 0;
+	    }
+    	}
+	fclose(fp);
+	return 0;
+    }
+}
+/*  wklin added end, 08/27/2007 */
+
 /*
  * LcpSendEchoRequest - Send an echo request frame to the peer
  */
@@ -2318,7 +2355,30 @@ LcpSendEchoRequest (f)
      */
     if (lcp_echo_fails != 0) {
         if (lcp_echos_pending >= lcp_echo_fails) {
-            LcpLinkFailure(f);
+	    /*  wklin modified start, 08/24/2007, for the fix of "no lcp echo 
+	     * reply" link down due to heavy traffic. Per NETGEAR's request 
+	     * */
+	    unsigned long received = 0;
+#ifdef MULTIPLE_PPPOE
+	    received = get_ppp_pktnr(ifunit);
+	    fprintf(stderr, "ppp%d rx %lu (%lu)\n", ifunit, received, 
+	                  lcp_ppp_received_pktnr[ifunit]);
+	    /* checks packets received at ppp0 */
+	    if(lcp_ppp_received_pktnr[ifunit] == received) {
+		fprintf(stderr, "link failure\n");
+            	LcpLinkFailure(f);
+	    }
+#else
+	    received = get_ppp_pktnr(f->unit);
+	    fprintf(stderr, "ppp rx %lu (%lu)\n", received, 
+	                  lcp_ppp_received_pktnr[f->unit]);
+	    /* checks packets received at ppp0 */
+	    if(lcp_ppp_received_pktnr[f->unit] == received) {
+		fprintf(stderr, "link failure\n");
+            	LcpLinkFailure(f);
+	    }
+#endif
+	    /*  wklin modified end, 08/24/2007 */
 	    lcp_echos_pending = 0;
 	}
     }
@@ -2331,6 +2391,14 @@ LcpSendEchoRequest (f)
 	pktp = pkt;
 	PUTLONG(lcp_magic, pktp);
         fsm_sdata(f, ECHOREQ, lcp_echo_number++ & 0xFF, pkt, pktp - pkt);
+        /*   wklin added start, 08/27/2007 */
+	if (lcp_echos_pending == 0)
+#ifdef MULTIPLE_PPPOE
+	    lcp_ppp_received_pktnr[ifunit] = get_ppp_pktnr(ifunit); 
+#else
+	    lcp_ppp_received_pktnr[f->unit] = get_ppp_pktnr(f->unit); 
+#endif
+	/*   wklin added end, 08/27/2007 */
 	++lcp_echos_pending;
     }
 }
@@ -2351,8 +2419,17 @@ lcp_echo_lowerup (unit)
     lcp_echo_timer_running = 0;
   
     /* If a timeout interval is specified then start the timer */
-    if (lcp_echo_interval != 0)
-        LcpEchoCheck (f);
+    if (lcp_echo_interval != 0) {
+        /*  modified start pling 10/06/2009 */
+        /* Don't send LCP echo req immediately,
+         *  as PAP/CHAP,IPCP are not done yet.
+         * Wait for the next timeout before sending out echo req.
+         */
+        /* LcpEchoCheck (f); */
+        TIMEOUT (LcpEchoTimeout, f, lcp_echo_interval);
+        lcp_echo_timer_running = 1;
+        /*  modified end pling 10/06/2009 */
+    }
 }
 
 /*

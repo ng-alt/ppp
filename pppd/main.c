@@ -178,6 +178,10 @@ int listen_time;
 int got_sigusr2;
 int got_sigterm;
 int got_sighup;
+/*  added start Winster Chan 12/23/2005 */
+int got_sigusr1;    /* Add signal SIGUSR1 */
+int conn_link = 1;
+/*  added end Winster Chan 12/23/2005 */
 
 static sigset_t signals_handled;
 static int waiting;
@@ -358,6 +362,15 @@ main(argc, argv)
 
     progname = *argv;
 
+    /*  added start, zacker, 04/20/2011 */
+    if (strstr(progname, "pppdv6"))
+    {
+        path_upapfile = _PATH_UPAPFILE_IPV6;
+        path_chapfile = _PATH_CHAPFILE_IPV6;
+        path_srpfile = _PATH_SRPFILE_IPV6;
+    }
+    /*  added end, zacker, 04/20/2011 */
+
     /*
      * Parse, in order, the system options file, the user's options file,
      * and the command line arguments.
@@ -374,10 +387,41 @@ main(argc, argv)
      */
     if (the_channel->process_extra_options)
 	(*the_channel->process_extra_options)();
-
+  /*  add start by Adams 12/20/2007 */
+#ifdef SUPPORT_PPP_DEBUG
+   if( debug_level >0 && debug_level < 8)
+   {
+     switch(debug_level){
+        case 1:
+                 setlogmask(LOG_UPTO(LOG_EMERG));
+                 break;
+        case 2:
+                   setlogmask(LOG_UPTO(LOG_ALERT));
+                 break;
+        case 3:
+                   setlogmask(LOG_UPTO(LOG_CRIT));
+                 break;
+        case 4:
+                   setlogmask(LOG_UPTO(LOG_ERR));
+                 break;
+        case 5:
+                   setlogmask(LOG_UPTO(LOG_WARNING));
+                 break;
+        case 6:
+                   setlogmask(LOG_UPTO(LOG_NOTICE));
+                 break;
+        case 7:
+                   setlogmask(LOG_UPTO(LOG_INFO));
+                 break;
+        case 8:
+                 setlogmask(LOG_UPTO(LOG_DEBUG));
+                 break;
+    }
+  }
+#else
     if (debug)
 	setlogmask(LOG_UPTO(LOG_DEBUG));
-
+#endif
     /*
      * Check that we are running as root.
      */
@@ -462,7 +506,9 @@ main(argc, argv)
 	else
 	    p = "(unknown)";
     }
+#if defined(USE_SYSLOG) /*  wklin added, 08/13/2007 */
     syslog(LOG_NOTICE, "pppd %s started by %s, uid %d", VERSION, p, uid);
+#endif
     script_setenv("PPPLOGNAME", p, 0);
 
     if (devnam[0])
@@ -515,8 +561,20 @@ main(argc, argv)
 		handle_events();
 		if (asked_to_quit)
 		    break;
+        /*  modified start Winster Chan 12/23/2005 */
+#if 0
 		if (get_loop_output())
 		    break;
+#else
+        if (conn_link) {
+            if (get_loop_output())
+                break;
+        }
+        else {
+            demand_discard2();
+        }
+#endif
+        /*  modified end Winster Chan 12/23/2005 */
 	    }
 	    remove_fd(fd_loop);
 	    if (asked_to_quit)
@@ -610,7 +668,13 @@ handle_events()
     kill_link = open_ccp_flag = 0;
     if (sigsetjmp(sigjmp, 1) == 0) {
 	sigprocmask(SIG_BLOCK, &signals_handled, NULL);
+        /*  modified start Winster Chan 12/23/2005 */
+#if 0
 	if (got_sighup || got_sigterm || got_sigusr2 || got_sigchld) {
+#else
+        if (got_sighup || got_sigterm || got_sigusr2 || got_sigchld || got_sigusr1) {
+#endif
+        /*  modified end Winster Chan 12/23/2005 */
 	    sigprocmask(SIG_UNBLOCK, &signals_handled, NULL);
 	} else {
 	    waiting = 1;
@@ -640,9 +704,26 @@ handle_events()
 	reap_kids();	/* Don't leave dead kids lying around */
     }
     if (got_sigusr2) {
+        /*  modified start Winster Chan 12/23/2005 */
+#if 0
 	open_ccp_flag = 1;
 	got_sigusr2 = 0;
+#else
+        kill_link = 0;
+        conn_link = 1;
+        got_sigusr2 = 0;
+#endif
+        /*  modified end Winster Chan 12/23/2005 */
     }
+    /*  added start Winster Chan 12/23/2005 */
+    if (got_sigusr1) {
+        kill_link = 1;
+        conn_link = 0;
+        need_holdoff = 0;
+        status = EXIT_USER_REQUEST;
+        got_sigusr1 = 0;
+    }
+    /*  added end Winster Chan 12/23/2005 */
 }
 
 /*
@@ -796,8 +877,10 @@ detach()
 void
 reopen_log()
 {
+#if defined(USE_SYSLOG) /*  wklin added, 08/13/2007 */
     openlog("pppd", LOG_PID | LOG_NDELAY, LOG_PPP);
     setlogmask(LOG_UPTO(LOG_INFO));
+#endif
 }
 
 /*
@@ -1170,7 +1253,9 @@ die(status)
 	print_link_stats();
     cleanup();
     notify(exitnotify, status);
+#if defined(USE_SYSLOG) /*  wklin added, 08/13/2007 */
     syslog(LOG_INFO, "Exit.");
+#endif
     exit(status);
 }
 
@@ -1417,9 +1502,13 @@ hup(sig)
 {
     /* can't log a message here, it can deadlock */
     got_sighup = 1;
+    /*  removed start Winster Chan 12/23/2005 */
+#if 0
     if (conn_running)
 	/* Send the signal to the [dis]connector process(es) also */
 	kill_my_pg(sig);
+#endif
+    /*  removed end Winster Chan 12/23/2005 */
     notify(sigreceived, sig);
     if (waiting)
 	siglongjmp(sigjmp, 1);
@@ -1438,9 +1527,13 @@ term(sig)
 {
     /* can't log a message here, it can deadlock */
     got_sigterm = sig;
+    /*  removed start Winster Chan 12/23/2005 */
+#if 0
     if (conn_running)
 	/* Send the signal to the [dis]connector process(es) also */
 	kill_my_pg(sig);
+#endif
+    /*  removed end Winster Chan 12/23/2005 */
     notify(sigreceived, sig);
     if (waiting)
 	siglongjmp(sigjmp, 1);
@@ -1471,12 +1564,22 @@ static void
 toggle_debug(sig)
     int sig;
 {
+    /*  modified start Winster Chan 12/23/2005 */
+#if 0
     debug = !debug;
     if (debug) {
 	setlogmask(LOG_UPTO(LOG_DEBUG));
     } else {
 	setlogmask(LOG_UPTO(LOG_WARNING));
     }
+#else
+    info("Disconnect on signal %d.", sig);
+    got_sigusr1 = 1;
+    notify(sigreceived, sig);
+    if (waiting)
+	siglongjmp(sigjmp, 1);
+#endif
+    /*  modified end Winster Chan 12/23/2005 */
 }
 
 
@@ -1490,9 +1593,19 @@ static void
 open_ccp(sig)
     int sig;
 {
+    /*  modified start Winster Chan 12/23/2005 */
+#if 0
     got_sigusr2 = 1;
     if (waiting)
 	siglongjmp(sigjmp, 1);
+#else
+    info("Connect on signal %d.", sig);
+    got_sigusr2 = 1;
+    notify(sigreceived, sig);
+    if (waiting)
+	siglongjmp(sigjmp, 1);
+#endif
+    /*  modified end Winster Chan 12/23/2005 */
 }
 
 
@@ -1736,7 +1849,9 @@ run_program(prog, args, must_exist, done, arg, wait)
 	/* have to reopen the log, there's nowhere else
 	   for the message to go. */
 	reopen_log();
+#if defined(USE_SYSLOG) /*  wklin added, 08/13/2007 */
 	syslog(LOG_ERR, "Can't execute %s: %m", prog);
+#endif
 	closelog();
     }
     _exit(-1);

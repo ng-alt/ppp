@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) $Header: /home/paulus/ppp/samba.org/ppp/include/pcap-int.h,v 1.1 2000/08/01 01:37:24 paulus Exp $ (LBL)
+ * @(#) $Header: /data/cvs/ppp/include/pcap-int.h,v 1.1 2000/08/01 01:37:24 paulus Exp $ (LBL)
  */
 
 #ifndef pcap_int_h
