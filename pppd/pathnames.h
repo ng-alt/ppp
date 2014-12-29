@@ -22,7 +22,7 @@
 #define _PATH_CHAPFILE 	 _ROOT_PATH "/tmp/ppp/chap-secrets"
 #define _PATH_SRPFILE 	 _ROOT_PATH "/tmp/ppp/srp-secrets"
 
-/*  added start, zacker, 04/20/2011 */
+/* foxconn added start, zacker, 04/20/2011 */
 #define _PATH_UPAPFILE_IPV6 	 _ROOT_PATH "/tmp/ppp/pap-secrets-ipv6"
 #define _PATH_CHAPFILE_IPV6 	 _ROOT_PATH "/tmp/ppp/chap-secrets-ipv6"
 #define _PATH_SRPFILE_IPV6 	 _ROOT_PATH "/tmp/ppp/srp-secrets-ipv6"
@@ -30,10 +30,10 @@
 extern char *path_upapfile;
 extern char *path_chapfile;
 extern char *path_srpfile;
-/*  added end, zacker, 04/20/2011 */
+/* foxconn added end, zacker, 04/20/2011 */
 
 #ifdef MULTIPLE_PPPOE
-#define _PATH_SYSOPTIONS _ROOT_PATH "/tmp/ppp/opt" /*  wklin modified,
+#define _PATH_SYSOPTIONS _ROOT_PATH "/tmp/ppp/opt" /* foxconn wklin modified,
                                                       09/06/2007 */
 #else
 #define _PATH_SYSOPTIONS _ROOT_PATH "/tmp/ppp/options"

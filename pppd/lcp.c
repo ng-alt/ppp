@@ -193,9 +193,10 @@ lcp_options lcp_gotoptions[NUM_PPP];	/* Options that peer ack'd */
 lcp_options lcp_allowoptions[NUM_PPP];	/* Options we allow peer to request */
 lcp_options lcp_hisoptions[NUM_PPP];	/* Options that we ack'd */
 #ifdef MULTIPLE_PPPOE
-unsigned long lcp_ppp_received_pktnr[2]; 
+unsigned long lcp_ppp_received_pktnr[2]; /* foxocnn wklin added, 08/24/2007, # of
+                                          ppp interfaces*/
 #else
-unsigned long lcp_ppp_received_pktnr[NUM_PPP]; 
+unsigned long lcp_ppp_received_pktnr[NUM_PPP]; /* foxocnn wklin added, 08/24/2007 */
 #endif
 
 static int lcp_echos_pending = 0;	/* Number of outstanding echo msgs */
@@ -2307,7 +2308,7 @@ lcp_received_echo_reply (f, id, inp, len)
     lcp_echos_pending = 0;
 }
 
-/*  wklin added start, 08/28/2007 */
+/* foxconn wklin added start, 08/28/2007 */
 /* For "no lcp reply" link down fix */
 static unsigned long get_ppp_pktnr(int ppp_unit)
 {
@@ -2337,7 +2338,7 @@ static unsigned long get_ppp_pktnr(int ppp_unit)
 	return 0;
     }
 }
-/*  wklin added end, 08/27/2007 */
+/* foxconn wklin added end, 08/27/2007 */
 
 /*
  * LcpSendEchoRequest - Send an echo request frame to the peer
@@ -2355,7 +2356,7 @@ LcpSendEchoRequest (f)
      */
     if (lcp_echo_fails != 0) {
         if (lcp_echos_pending >= lcp_echo_fails) {
-	    /*  wklin modified start, 08/24/2007, for the fix of "no lcp echo 
+	    /* foxconn wklin modified start, 08/24/2007, for the fix of "no lcp echo 
 	     * reply" link down due to heavy traffic. Per NETGEAR's request 
 	     * */
 	    unsigned long received = 0;
@@ -2378,7 +2379,7 @@ LcpSendEchoRequest (f)
             	LcpLinkFailure(f);
 	    }
 #endif
-	    /*  wklin modified end, 08/24/2007 */
+	    /* foxconn wklin modified end, 08/24/2007 */
 	    lcp_echos_pending = 0;
 	}
     }
@@ -2391,14 +2392,14 @@ LcpSendEchoRequest (f)
 	pktp = pkt;
 	PUTLONG(lcp_magic, pktp);
         fsm_sdata(f, ECHOREQ, lcp_echo_number++ & 0xFF, pkt, pktp - pkt);
-        /*   wklin added start, 08/27/2007 */
+        /* foxconn foxconn wklin added start, 08/27/2007 */
 	if (lcp_echos_pending == 0)
 #ifdef MULTIPLE_PPPOE
 	    lcp_ppp_received_pktnr[ifunit] = get_ppp_pktnr(ifunit); 
 #else
 	    lcp_ppp_received_pktnr[f->unit] = get_ppp_pktnr(f->unit); 
 #endif
-	/*   wklin added end, 08/27/2007 */
+	/* foxconn foxconn wklin added end, 08/27/2007 */
 	++lcp_echos_pending;
     }
 }
@@ -2420,7 +2421,7 @@ lcp_echo_lowerup (unit)
   
     /* If a timeout interval is specified then start the timer */
     if (lcp_echo_interval != 0) {
-        /*  modified start pling 10/06/2009 */
+        /* Foxconn modified start pling 10/06/2009 */
         /* Don't send LCP echo req immediately,
          *  as PAP/CHAP,IPCP are not done yet.
          * Wait for the next timeout before sending out echo req.
@@ -2428,7 +2429,7 @@ lcp_echo_lowerup (unit)
         /* LcpEchoCheck (f); */
         TIMEOUT (LcpEchoTimeout, f, lcp_echo_interval);
         lcp_echo_timer_running = 1;
-        /*  modified end pling 10/06/2009 */
+        /* Foxconn modified end pling 10/06/2009 */
     }
 }
 

@@ -1634,6 +1634,12 @@ int cifdefaultroute (int unit, u_int32_t ouraddr, u_int32_t gateway)
     SET_SA_FAMILY (rt.rt_dst,     AF_INET);
     SET_SA_FAMILY (rt.rt_gateway, AF_INET);
 
+    /* Foxconn added start, FredPeng, 02/06/2010 */
+    #if (defined MEBR3500) || (defined MBRN3300H)
+    rt.rt_dev=ifname;
+    #endif
+    /* Foxconn added end, FredPeng, 02/06/2010 */
+
     if (kernel_version > KVERSION(2,1,0)) {
 	SET_SA_FAMILY (rt.rt_genmask, AF_INET);
 	SIN_ADDR(rt.rt_genmask) = 0L;
@@ -2564,14 +2570,24 @@ get_pty(master_fdp, slave_fdp, slave_name, uid)
 	    if ((sfd = open(pty_name, O_RDWR | O_NOCTTY)) < 0)
 		warn("Couldn't open pty slave %s: %m", pty_name);
 	}
+        if (sfd < 0) /* foxconn wklin added, 04/08/2011 */
+            close(mfd); /* foxconn wklin added, 03/10/2011 */
     }
 #endif /* TIOCGPTN */
 
     if (sfd < 0) {
 	/* the old way - scan through the pty name space */
+	/* foxconn modified start, wenchia, 2007/01/02 */
+	/* directly scan the pty name from ptys0 to ptys15 */
+	/*
 	for (i = 0; i < 64; ++i) {
 	    slprintf(pty_name, sizeof(pty_name), "/dev/pty%c%x",
 		     'p' + i / 16, i % 16);
+	*/
+	for (i = 0; i < 16; ++i) {
+	    slprintf(pty_name, sizeof(pty_name), "/dev/pty%c%x",
+		     's' + i / 16, i % 16);
+    /* foxconn modified end, wenchia, 2007/01/02 */
 	    mfd = open(pty_name, O_RDWR, 0);
 	    if (mfd >= 0) {
 		pty_name[5] = 't';

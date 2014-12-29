@@ -90,11 +90,11 @@ struct option_value {
 /*
  * Option variables and default values.
  */
-/*  add start, Adams 12/20/2007 */ 
+/* Foxconn add start, Adams 12/20/2007 */ 
 #ifdef SUPPORT_PPP_DEBUG
 int     debug_level = 0;
 #endif
-/*  add end, Adams 12/20/2007 */
+/* Foxconn add end, Adams 12/20/2007 */
 
 int	debug = 0;		/* Debug flag */
 int	kdebugflag = 0;		/* Tell kernel to print debug messages */
@@ -194,7 +194,7 @@ static struct option_list *extra_options = NULL;
 option_t general_options[] = {
 #ifdef SUPPORT_PPP_DEBUG
     { "debug_level", o_int, &debug_level,
-      "Set debug level for syslogd ", OPT_PRIO }, ///*  add by Adams 12/20/2007 */
+      "Set debug level for syslogd ", OPT_PRIO }, ///* Foxconn add by Adams 12/20/2007 */
 #endif
     { "debug", o_int, &debug,
       "Increase debugging level", OPT_INC | OPT_NOARG | 1 },
@@ -1083,7 +1083,7 @@ option_error __V((char *fmt, ...))
     va_end(args);
     if (phase == PHASE_INITIALIZE)
 	fprintf(stderr, "%s: %s\n", progname, buf);
-#if defined(USE_SYSLOG) /*  wklin added, 08/13/2007 */
+#if defined(USE_SYSLOG) /* foxconn wklin added, 08/13/2007 */
     syslog(LOG_ERR, "%s", buf);
 #endif
 }

@@ -271,11 +271,11 @@ extern struct notifier *fork_notifier;	/* we are a new child process */
  * Variables set by command-line options.
  */
 
- /*  add start, Adams 12/20/2007 */
+ /* Foxconn add start, Adams 12/20/2007 */
 #ifdef SUPPORT_PPP_DEBUG
 extern int      debug_level; /* Debug level for syslogd */
 #endif
- /*  add end, Adams 12/20/2007 */
+ /* Foxconn add end, Adams 12/20/2007 */
  
 extern int	debug;		/* Debug flag */
 extern int	kdebugflag;	/* Tell kernel to print debug messages */
@@ -569,7 +569,7 @@ void demand_conf __P((void));	/* config interface(s) for demand-dial */
 void demand_block __P((void));	/* set all NPs to queue up packets */
 void demand_unblock __P((void)); /* set all NPs to pass packets */
 void demand_discard __P((void)); /* set all NPs to discard packets */
-/*  added, Winster Chan, 12/23/2005, demand_discard2() */
+/* Foxconn added, Winster Chan, 12/23/2005, demand_discard2() */
 void demand_discard2 __P((void)); /* set all NPs to discard packets without errors */
 void demand_rexmit __P((int));	/* retransmit saved frames for an NP */
 int  loop_chars __P((unsigned char *, int)); /* process chars from loopback */
