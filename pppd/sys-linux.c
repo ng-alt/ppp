@@ -340,8 +340,10 @@ void sys_cleanup(void)
 	if_is_up = 0;
 	sifdown(0);
     }
+#ifdef INET6
     if (if6_is_up)
 	sif6down(0);
+#endif /* INET6 */
 
 /*
  * Delete any routes through the device.
@@ -457,6 +459,13 @@ int generic_establish_ppp (int fd)
 
     if (new_style_driver) {
 	int flags;
+
+        /* if a ppp_fd is already open, close it first */
+        if(ppp_fd > 0) {
+          close(ppp_fd);
+          remove_fd(ppp_fd);
+          ppp_fd = -1;
+        }
 
 	/* Open an instance of /dev/ppp and connect the channel to it */
 	if (ioctl(fd, PPPIOCGCHAN, &chindex) == -1) {
@@ -632,13 +641,15 @@ static int make_ppp_unit()
 	    || fcntl(ppp_dev_fd, F_SETFL, flags | O_NONBLOCK) == -1)
 		warn("Couldn't set /dev/ppp to nonblock: %m");
 
-	ifunit = req_unit;
-	x = ioctl(ppp_dev_fd, PPPIOCNEWUNIT, &ifunit);
-	if (x < 0 && req_unit >= 0 && errno == EEXIST) {
-		warn("Couldn't allocate PPP unit %d as it is already in use", req_unit);
-		ifunit = -1;
+	ifunit = (req_unit >= 0) ? req_unit : req_minunit;
+	do {
 		x = ioctl(ppp_dev_fd, PPPIOCNEWUNIT, &ifunit);
-	}
+		if (x < 0 && errno == EEXIST) {
+			warn("Couldn't allocate PPP unit %d as it is already in use", ifunit);
+			ifunit = (req_unit >= 0) ? -1 : ++req_minunit;
+		} else break;
+	} while (ifunit < MAXUNIT);
+
 	if (x < 0)
 		error("Couldn't create new ppp unit: %m");
 	return x;
@@ -2163,6 +2174,7 @@ int ppp_available(void)
 
 void logwtmp (const char *line, const char *name, const char *host)
 {
+#if 0
     struct utmp ut, *utp;
     pid_t  mypid = getpid();
 #if __GLIBC__ < 2
@@ -2228,6 +2240,7 @@ void logwtmp (const char *line, const char *name, const char *host)
 	close (wtmp);
     }
 #endif
+#endif
 }
 #endif /* HAVE_LOGWTMP */
 
@@ -2251,6 +2264,47 @@ int sifvjcomp (int u, int vjcomp, int cidcomp, int maxcid)
 	modify_flags(ppp_dev_fd, SC_COMP_TCP|SC_NO_TCP_CCID, x);
 
 	return 1;
+}
+
+/********************************************************************
+ *
+ * sifname - Config the interface name.
+ */
+int sifname (int unit, const char *newname)
+{
+    struct ifreq ifr;
+    int ifindex;
+
+    if (strcmp(ifname, newname) == 0)
+	return 1;
+
+    memset(&ifr, 0, sizeof(ifr));
+    strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+    /* Get and keep interface index */
+    if (ioctl(sock_fd, SIOCGIFINDEX, (caddr_t) &ifr) < 0) {
+	error("ioctl (SIOCGIFINDEX): %m (line %d)", __LINE__);
+	return 0;
+    }
+    ifindex = ifr.ifr_ifindex;
+
+    /* Set new interface name, patterns such as "vpn%d" are allowed
+     * by kernel, the lowest available slot will be used */
+    strlcpy(ifr.ifr_newname, newname, sizeof(ifr.ifr_newname));
+    if (ioctl(sock_fd, SIOCSIFNAME, (caddr_t) &ifr) < 0) {
+	error("Couldn't set interface name %s: %m", ifr.ifr_newname);
+	return 0;
+    }
+
+    /* Get new interface name back */
+    ifr.ifr_ifindex = ifindex;
+    if (ioctl(sock_fd, SIOCGIFNAME, (caddr_t) &ifr) < 0) {
+	error("ioctl (SIOCGIFNAME): %m (line %d)", __LINE__);
+        return 0;
+    }
+
+    strcpy(ifname, ifr.ifr_name);
+    return 1;
 }
 
 /********************************************************************

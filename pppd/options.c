@@ -78,6 +78,7 @@
 #if defined(ultrix) || defined(NeXT)
 char *strdup __P((char *));
 #endif
+bool tx_only;			/* JYWeng 20031216: idle time counting on tx traffic */
 
 static const char rcsid[] = RCSID;
 
@@ -90,6 +91,7 @@ struct option_value {
 /*
  * Option variables and default values.
  */
+bool	nochecktime = 0;	/* Don't check time */
 int	debug = 0;		/* Debug flag */
 int	kdebugflag = 0;		/* Tell kernel to print debug messages */
 int	default_device = 1;	/* Using /dev/tty or equivalent */
@@ -104,6 +106,7 @@ bool	persist = 0;		/* Reopen link after it goes down */
 char	our_name[MAXNAMELEN];	/* Our name for authentication purposes */
 bool	demand = 0;		/* do dial-on-demand */
 char	*ipparam = NULL;	/* Extra parameter for ip up/down scripts */
+
 int	idle_time_limit = 0;	/* Disconnect if idle for this many seconds */
 int	holdoff = 30;		/* # seconds to pause before reconnecting */
 bool	holdoff_specified;	/* true if a holdoff value has been given */
@@ -114,6 +117,8 @@ char	linkname[MAXPATHLEN];	/* logical name for link */
 bool	tune_kernel;		/* may alter kernel settings */
 int	connect_delay = 1000;	/* wait this many ms after connect script */
 int	req_unit = -1;		/* requested interface unit */
+int	req_minunit = -1;	/* requested minimal interface unit */
+char	req_ifname[32];		/* requested interface name */
 bool	multilink = 0;		/* Enable multilink operation */
 char	*bundle_name = NULL;	/* bundle name for multilink */
 bool	dump_options;		/* print out option values */
@@ -194,6 +199,8 @@ static struct option_list *extra_options = NULL;
  * Valid arguments.
  */
 option_t general_options[] = {
+    { "nochecktime", o_bool, &nochecktime,
+      "Don't check time", OPT_PRIO | 1 },
     { "debug", o_int, &debug,
       "Increase debugging level", OPT_INC | OPT_NOARG | 1 },
     { "-d", o_int, &debug,
@@ -282,6 +289,13 @@ option_t general_options[] = {
     { "unit", o_int, &req_unit,
       "PPP interface unit number to use if possible",
       OPT_PRIO | OPT_LLIMIT, 0, 0 },
+    { "minunit", o_int, &req_minunit,
+      "PPP interface minimal unit number",
+      OPT_PRIO | OPT_LLIMIT, 0, 0 },
+
+    { "ifname", o_string, req_ifname,
+      "PPP interface name to use if possible",
+      OPT_PRIO | OPT_PRIV | OPT_STATIC, NULL, sizeof(req_ifname) },
 
     { "dump", o_bool, &dump_options,
       "Print out option values after parsing all options", 1 },
@@ -339,6 +353,10 @@ option_t general_options[] = {
       "Check for traffic limit every N seconds", OPT_PRIO | OPT_LLIMIT | 1 },
 #endif
 
+/* JYWeng 20031216: add for tx_only option*/
+    { "tx_only", o_bool, &tx_only,
+      "set idle time counting on tx_only or not", 1 },
+
     { NULL }
 };
 
@@ -388,6 +406,7 @@ parse_args(argc, argv)
 	    usage();
 	    return 0;
 	}
+
 	n = n_arguments(opt);
 	if (argc < n) {
 	    option_error("too few parameters for option %s", arg);
@@ -780,7 +799,7 @@ process_option(opt, cmd, argv)
 	    sv = strdup(*argv);
 	    if (sv == NULL)
 		novm("option argument");
-	    if (*optptr)
+	    if (*optptr && opt->source)
 		free(*optptr);
 	    *optptr = sv;
 	}

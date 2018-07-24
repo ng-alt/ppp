@@ -80,6 +80,7 @@
 #define MAXARGS		1	/* max # args to a command */
 #define MAXNAMELEN	256	/* max length of hostname or name for auth */
 #define MAXSECRETLEN	256	/* max length of password or secret */
+#define MAXUNIT		255	/* max ppp interface */
 
 /*
  * Option descriptor structure.
@@ -210,6 +211,7 @@ struct notifier {
 /*
  * Global variables.
  */
+extern bool tx_only;			/* JYWeng 20031216: idle time counting on tx traffic */
 
 extern int	hungup;		/* Physical layer has disconnected */
 extern int	ifunit;		/* Interface unit number */
@@ -260,8 +262,10 @@ extern struct notifier *exitnotify;  /* for notification that we're exiting */
 extern struct notifier *sigreceived; /* notification of received signal */
 extern struct notifier *ip_up_notifier;     /* IPCP has come up */
 extern struct notifier *ip_down_notifier;   /* IPCP has gone down */
+#ifdef INET6
 extern struct notifier *ipv6_up_notifier;   /* IPV6CP has come up */
 extern struct notifier *ipv6_down_notifier; /* IPV6CP has gone down */
+#endif
 extern struct notifier *auth_up_notifier; /* peer has authenticated */
 extern struct notifier *link_down_notifier; /* link has gone down */
 extern struct notifier *fork_notifier;	/* we are a new child process */
@@ -274,6 +278,7 @@ extern struct notifier *fork_notifier;	/* we are a new child process */
  * Variables set by command-line options.
  */
 
+extern bool	nochecktime;	/* Don't check time */
 extern int	debug;		/* Debug flag */
 extern int	kdebugflag;	/* Tell kernel to print debug messages */
 extern int	default_device;	/* Using /dev/tty or equivalent */
@@ -310,7 +315,6 @@ extern int	holdoff;	/* Dead time before restarting */
 extern bool	holdoff_specified; /* true if user gave a holdoff value */
 extern bool	notty;		/* Stdin/out is not a tty */
 extern char	*pty_socket;	/* Socket to connect to pty */
-extern char	*record_file;	/* File to record chars sent/received */
 extern bool	sync_serial;	/* Device is synchronous serial device */
 extern int	maxfail;	/* Max # of unsuccessful connection attempts */
 extern char	linkname[MAXPATHLEN]; /* logical name for link */
@@ -318,6 +322,8 @@ extern bool	tune_kernel;	/* May alter kernel settings as necessary */
 extern int	connect_delay;	/* Time to delay after connect script */
 extern int	max_data_rate;	/* max bytes/sec through charshunt */
 extern int	req_unit;	/* interface unit number to use */
+extern int	req_minunit;	/* interface minimal unit number to use */
+extern char	req_ifname[];	/* interface name to use */
 extern bool	multilink;	/* enable multilink operation */
 extern bool	noendpoint;	/* don't send or accept endpt. discrim. */
 extern char	*bundle_name;	/* bundle name for multilink */
@@ -513,7 +519,7 @@ void notify __P((struct notifier *, int));
 int  ppp_send_config __P((int, int, u_int32_t, int, int));
 int  ppp_recv_config __P((int, int, u_int32_t, int, int));
 const char *protocol_name __P((int));
-void remove_pidfiles __P((void));
+void remove_pidfiles __P((int));
 void lock_db __P((void));
 void unlock_db __P((void));
 
@@ -542,6 +548,8 @@ void dump_packet __P((const char *, u_char *, int));
 				/* dump packet to debug log if interesting */
 ssize_t complete_read __P((int, void *, size_t));
 				/* read a complete buffer */
+/* JYWeng 20031216: add to wanstatus.log */
+void save_wanstatus __P((char *));
 
 /* Procedures exported from auth.c */
 void link_required __P((int));	  /* we are starting to use the link */
@@ -583,7 +591,7 @@ void demand_conf __P((void));	/* config interface(s) for demand-dial */
 void demand_block __P((void));	/* set all NPs to queue up packets */
 void demand_unblock __P((void)); /* set all NPs to pass packets */
 void demand_discard __P((void)); /* set all NPs to discard packets */
-void demand_rexmit __P((int));	/* retransmit saved frames for an NP */
+void demand_rexmit __P((int, u_int32_t)); /* retransmit saved frames for an NP*/
 int  loop_chars __P((unsigned char *, int)); /* process chars from loopback */
 int  loop_frame __P((unsigned char *, int)); /* should we bring link up? */
 
@@ -648,6 +656,7 @@ void netif_set_mtu __P((int, int)); /* Set PPP interface MTU */
 int  netif_get_mtu __P((int));      /* Get PPP interface MTU */
 int  sifvjcomp __P((int, int, int, int));
 				/* Configure VJ TCP header compression */
+int  sifname __P((int, const char *));/* Configure i/f name */
 int  sifup __P((int));		/* Configure i/f up for one protocol */
 int  sifnpmode __P((int u, int proto, enum NPmode mode));
 				/* Set mode for handling packets for proto */
@@ -734,8 +743,10 @@ extern int (*allowed_address_hook) __P((u_int32_t addr));
 extern void (*ip_up_hook) __P((void));
 extern void (*ip_down_hook) __P((void));
 extern void (*ip_choose_hook) __P((u_int32_t *));
+#ifdef INET6
 extern void (*ipv6_up_hook) __P((void));
 extern void (*ipv6_down_hook) __P((void));
+#endif
 
 extern int (*chap_check_hook) __P((void));
 extern int (*chap_passwd_hook) __P((char *user, char *passwd));
